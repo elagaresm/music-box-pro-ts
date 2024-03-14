@@ -4,17 +4,28 @@ import mm from 'music-metadata'
 
 const LIBRARY_PATH = 'C:\\Users\\Enmanuel\\Downloads\\Songs'
 
+export type Song = {
+  name: string
+  path: string
+  artist: string
+  coverPath: string | null
+}
+
 export async function loadSongs() {
   try {
     const artists = await readLibraryPath()
     const result = []
 
+    if (artists === undefined) {
+      throw new Error()
+    }
     for (const artist of artists) {
       result.push(await getArtistByName(artist))
     }
     return result
   } catch (err) {
     console.error('Unable to scan directory: ', err)
+    return null
   }
 }
 
@@ -27,9 +38,12 @@ async function readLibraryPath() {
   return await fs.readdir(LIBRARY_PATH)
 }
 
-export async function getArtistByName(artistName) {
+export async function getArtistByName(artistName: string): Promise<Song> {
   try {
     const library = await readLibraryPath()
+    if (library === undefined) {
+      throw new Error('library is undefined')
+    }
     const artist = library.find((dir) => dir === artistName)
 
     if (!artist) {
@@ -45,7 +59,10 @@ export async function getArtistByName(artistName) {
     const files = await fs.readdir(artistDirectoryPath)
 
     const coverPath = getCoverPath(files, artistDirectoryPath)
-
+    let cover: Buffer | null = null
+    if (coverPath !== null) {
+      cover = await fs.readFile(coverPath)
+    }
     const songs = getSongs(files, artistDirectoryPath, artist)
 
     return {
@@ -58,10 +75,21 @@ export async function getArtistByName(artistName) {
   }
 }
 
-function getSongs(files, artistDirectoryPath, artistName) {
+/**
+ * Filters a list of file names for songs (`.mp3` files) and constructs an array of song objects
+ * with metadata including the song's name, path, artist name, and cover path. It assumes that
+ * all songs belong to the specified artist and that the cover image's path applies to all songs.
+ *
+ * @param {string[]} files An array of file names to be filtered and processed as songs.
+ * @param {string} artistDirectoryPath The directory path where the artist's songs are stored.
+ * @param {string} artistName The name of the artist to whom the songs belong.
+ * @returns {Object[]} An array of objects, each representing a song with properties: `name` (the song's name without the `.mp3` extension),
+ * `path` (the full path to the song file), `artist` (the artist's name), and `coverPath` (the path to the song's cover image).
+ */
+function getSongs(files: string[], artistDirectoryPath: string, artistName: string): Song[] {
   const coverPath = getCoverPath(files, artistDirectoryPath)
   const songs = files
-    .filter((file) => file.endsWith('.mp3'))
+    .filter((file: string) => file.endsWith('.mp3'))
     .map((song) => {
       const songPath = path.join(artistDirectoryPath, song)
       return {
@@ -71,35 +99,48 @@ function getSongs(files, artistDirectoryPath, artistName) {
         coverPath
       }
     })
-
   return songs
 }
 
-export async function getSongDuration(songPath) {
+/**
+ * Asynchronously retrieves the duration of a song file.
+ *
+ * This function attempts to read and parse the metadata of a song file specified by the `path` parameter.
+ * It specifically looks for the duration of the song within the file's metadata. If the duration is found,
+ * it is returned. If the duration cannot be determined or if any error occurs during the process, the function
+ * returns null.
+ *
+ * @param {string} path The path to the song file from which to retrieve the duration.
+ * @returns {Promise<number | null>} A Promise that resolves to the duration of the song in seconds as a number
+ * if the duration is successfully retrieved. If the duration is undefined or if an error occurs, the Promise resolves to null.
+ */
+export async function getSongDuration(path: string): Promise<number | null> {
   try {
-    const metadata = await mm.parseFile(songPath, { duration: true, skipCovers: true })
-    const duration = metadata.format.duration
+    const metadata = await mm.parseFile(path, { duration: true, skipCovers: true })
+    const { duration } = metadata.format
+    if (duration === undefined) {
+      throw new Error('duration is undefined')
+    }
     return duration
   } catch (error) {
     console.error('Error getting song metadata:', error)
+    return null
   }
 }
 
-export async function getSongData(songPath) {
+/**
+ * Asynchronously reads the entire contents of a file.
+ *
+ * @param {string} filePath The path to the file to be read.
+ * @returns {Promise<Buffer | null>} A Promise that resolves to a Buffer containing the file's data if the file is successfully read. If an error occurs during reading the file, the Promise resolves to null.
+ */
+export async function getDataFromFile(filePath: string): Promise<Buffer | null> {
   try {
-    const data = await fs.readFile(songPath)
+    const data = await fs.readFile(filePath)
     return data
   } catch (error) {
-    console.error('Error getting song data:', error)
-  }
-}
-
-export async function getCoverData(coverPath) {
-  try {
-    const data = await fs.readFile(coverPath)
-    return data
-  } catch (error) {
-    console.error('Error getting song data:', error)
+    console.error('Error getting file data: ', error)
+    return null
   }
 }
 
@@ -172,7 +213,7 @@ async function isDirectory(path: string): Promise<boolean> {
  * console.log(getFileNameWithoutExtension("anotherfile")); // Outputs: "anotherfile"
  * console.log(getFileNameWithoutExtension("my.file.with.many.dots.ext")); // Outputs: "my.file.with.many.dots"
  */
-function gcwetFileNameWithoutExtension(filename: string): string {
+function getFileNameWithoutExtension(filename: string): string {
   if (filename.indexOf('/') !== -1) {
     const basename = filename.split('/')[-1]
     return basename.split('.').slice(0, -1).join('.')
