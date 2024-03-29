@@ -1,8 +1,18 @@
 import { contextBridge } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import {
+  ArtistsWithAlbumCount,
+  getAllArtistsWithAlbumCount,
+  getArtistByName,
+  ArtistByName
+} from './lib/utils'
 
 // Custom APIs for renderer
-const api = {}
+const api = {
+  getAllArtistsWithAlbumCount: (): Promise<ArtistsWithAlbumCount[] | null> =>
+    getAllArtistsWithAlbumCount(),
+  getArtistByName: (artistName: string): Promise<ArtistByName | null> => getArtistByName(artistName)
+}
 
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise

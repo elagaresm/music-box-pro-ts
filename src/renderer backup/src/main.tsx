@@ -2,23 +2,19 @@ import './assets/main.css'
 
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-
 import App from './App'
-import { loader as artistsLoader } from './routes/Artists'
 import { createHashRouter, RouterProvider } from 'react-router-dom'
-import Artists from './routes/Artists'
-import ErrorPage from './routes/ErrorPage'
-import Artist, { loader as artistLoader } from './routes/Artist'
 
 const router = createHashRouter([
   {
     path: '/',
-    element: <App />,
+    element: <App />
+    /* loader: appLoader,
     errorElement: <ErrorPage />,
     children: [
-      { index: true, element: <Artists />, loader: artistsLoader },
-      { path: 'artist/:artistName', element: <Artist />, loader: artistLoader }
-    ]
+      { index: true, element: <Main />, loader: appLoader },
+      { path: "artist/:artistName", element: <Artist />, loader: artistLoader },
+    ], */
   }
 ])
 

@@ -6,10 +6,11 @@ import icon from '../../resources/icon.png?asset'
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
-    show: false,
+    width: 768,
+    height: 1024,
+    // show: false,
     autoHideMenuBar: true,
+    resizable: false,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -50,7 +51,7 @@ app.whenReady().then(() => {
   })
 
   // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
+  // ipcMain.on('ping', () => console.log('pong'))
 
   createWindow()
 
