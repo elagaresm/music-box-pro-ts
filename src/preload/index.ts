@@ -1,17 +1,24 @@
 import { contextBridge } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import {
-  ArtistsWithAlbumCount,
-  getAllArtistsWithAlbumCount,
+  Album,
+  Artist,
+  getAlbumByName,
+  getArtistAll,
   getArtistByName,
-  ArtistByName
-} from './lib/utils'
+  getSongDuration
+} from './lib/db'
 
 // Custom APIs for renderer
 const api = {
-  getAllArtistsWithAlbumCount: (): Promise<ArtistsWithAlbumCount[] | null> =>
-    getAllArtistsWithAlbumCount(),
-  getArtistByName: (artistName: string): Promise<ArtistByName | null> => getArtistByName(artistName)
+  getArtistAll: (): Promise<Artist[] | null> => getArtistAll(),
+  getArtistByName: (artistName: string): Promise<Artist | null> => getArtistByName(artistName),
+  getAlbumByName: (
+    albumName: string,
+    artistName: string,
+    opts: { songs: boolean }
+  ): Promise<Album | null> => getAlbumByName(albumName, artistName, opts),
+  getSongDuration: (songPath: string): Promise<number | null> => getSongDuration(songPath)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

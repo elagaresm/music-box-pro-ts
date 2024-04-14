@@ -1,9 +1,9 @@
-export function getCoverBlob(coverPath: Buffer) {
+export function getCoverBlob(coverPath: Buffer): string {
   const blob = new Blob([coverPath], { type: 'image/jpeg' })
   return URL.createObjectURL(blob)
 }
 
-export function secondsToMinutes(seconds) {
+export function secondsToMinutes(seconds: number): string {
   const minutes = Math.floor(seconds / 60)
   const remainingSeconds = Math.floor(seconds % 60)
   if (remainingSeconds < 10) {
@@ -12,15 +12,21 @@ export function secondsToMinutes(seconds) {
   return `${minutes}:${remainingSeconds}`
 }
 
-export function matrixOnEvent(event) {
-  const letters = 'abcdefghijklmnopqrstuvwxyz'
+export function matrixOnEvent(headingRef: React.MutableRefObject<HTMLHeadingElement>): void {
+  if (!headingRef.current || !headingRef.current.dataset.value) {
+    return
+  }
   let iterations = 0
   const interval = setInterval(() => {
-    event.target.innerText = event.target.innerText
+    const letters = 'abcdefghijklmnopqrstuvwxyz'
+    headingRef.current.innerText = headingRef.current.innerText
       .split('')
       .map((letter, index) => {
+        if (letter === ' ') {
+          return letter
+        }
         if (index < iterations) {
-          return event.target.dataset.value[index]
+          return headingRef.current.dataset.value?.[index] ?? letter
         }
         if (letter.toLowerCase() === letter) {
           return letters[Math.floor(Math.random() * 26)]
@@ -29,10 +35,10 @@ export function matrixOnEvent(event) {
       })
       .join('')
 
-    if (iterations >= event.target.innerText.length) {
+    if (iterations >= headingRef.current.innerText.length) {
       clearInterval(interval)
     }
 
-    iterations += 1 / 3
+    iterations += 1 / 2
   }, 30)
 }

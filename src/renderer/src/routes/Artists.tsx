@@ -1,13 +1,12 @@
 import { Link, useLoaderData, useLocation } from 'react-router-dom'
 import { getCoverBlob } from '../lib/helper'
-import { ArtistsWithAlbumCount } from '@renderer/env'
+import { Artist, Album } from '@renderer/env'
 import ThumbnailFallback from '../assets/thumbnail-fallback.webp'
 import Collage from './components/Collage'
 
-export async function loader(): Promise<ArtistsWithAlbumCount | null> {
+export async function loader(): Promise<Artist[] | null> {
   try {
-    const artists = await window.api.getAllArtistsWithAlbumCount()
-    console.log(artists)
+    const artists = await window.api.getArtistAll()
     if (artists === null) {
       throw new Error('Error loading artists')
     }
@@ -20,17 +19,18 @@ export async function loader(): Promise<ArtistsWithAlbumCount | null> {
 
 const Artists = (): JSX.Element => {
   /* Print current location */
-  const location = useLocation()
-  console.log('path: ', location.pathname)
+  /* const location = useLocation()
+  console.log('path: ', location.pathname) */
 
-  const loaderData = useLoaderData() as ArtistsWithAlbumCount[]
+  const data = useLoaderData() as Artist[]
 
-  if (loaderData && loaderData.length > 0) {
+  if (data && data.length > 0) {
     return (
       <ArtistGrid>
-        {loaderData.map((artist) => {
+        {data.map((artist) => {
+          console.log('artist:', artist)
           return (
-            <Link to={`/artist/${artist.artist}`} key={artist.artist}>
+            <Link to={`/artist/${artist.name}`} key={artist.name}>
               <ArtistThumbnail artist={artist} />
             </Link>
           )
@@ -56,8 +56,12 @@ function ArtistGrid({ children }: { children: JSX.Element[] }): JSX.Element {
   )
 }
 
-function ArtistThumbnail({ artist }: { artist: ArtistsWithAlbumCount }): JSX.Element {
-  const { artist: name, covers, albumsCount } = artist
+function ArtistThumbnail({ artist }: { artist: Artist }): JSX.Element {
+  const { name, albums } = artist
+
+  const covers = albums.map((album: Album) => album.cover)
+
+  const largeText = name.length > 12
 
   if (covers === null) {
     return (
@@ -68,8 +72,11 @@ function ArtistThumbnail({ artist }: { artist: ArtistsWithAlbumCount }): JSX.Ele
           className="w-full rounded aspect-square"
         />
         <div className="w-full overflow-hidden flex flex-col items-center">
-          <p className="text-white text-center text-base whitespace-nowrap w-full">{name}</p>
-          <p className="text-outline text-xs">{albumsCount} albums</p>
+          <p
+            className={`${largeText && 'moving-text'} text-white text-center text-base whitespace-nowrap w-full mt-2 mb-1`}
+          >
+            {name}
+          </p>
         </div>
       </div>
     )
@@ -78,25 +85,21 @@ function ArtistThumbnail({ artist }: { artist: ArtistsWithAlbumCount }): JSX.Ele
   const coversData: string[] | JSX.Element = []
 
   for (const cover of covers) {
+    if (cover === null) {
+      continue
+    }
     coversData.push(getCoverBlob(cover))
   }
 
-  const largeText = name.length > 12
-
   return (
     <div className="p-2 bg-[#151515] rounded-lg flex basis-32 flex-col items-center hover:scale-110 duration-500 ease-in-out cursor-pointer">
-      {coversData.length === 1 ? (
-        <img src={coversData[0]} alt="artist thumbnail" className="w-full rounded aspect-square" />
-      ) : (
-        <Collage images={coversData} />
-      )}
+      <Collage images={coversData} />
       <div className="w-full overflow-hidden flex flex-col items-center">
         <p
-          className={`${largeText && 'moving-text'} text-white text-center text-base whitespace-nowrap w-full`}
+          className={`${largeText && 'moving-text'} text-white text-center text-base whitespace-nowrap w-full mt-2 mb-1`}
         >
           {name}
         </p>
-        <p className="text-outline text-xs">{albumsCount} albums</p>
       </div>
     </div>
   )

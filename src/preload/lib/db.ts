@@ -4,41 +4,23 @@ import mm from 'music-metadata'
 
 const LIBRARY_PATH = 'C:\\Users\\Enmanuel\\Downloads\\Songs'
 
-type Artist = {
+export type Artist = {
   name: string
-  path: string
-}
-
-type Cover = Buffer | null
-
-type Song = {
-  name: string
-  path: string
-  artist: Artist
-  cover: Cover
+  albums: Album[]
 }
 
 export type Album = {
-  songs: Song[]
-  cover: Cover
-  artist: Artist
+  name: string
+  songs?: Song[]
+  cover: Buffer | null
+  artistName: string
 }
 
-export type ArtistsWithAlbumCount = {
-  artist: string
-  albumsCount: number
-  covers: Buffer[] | null
-}
-
-export type ArtistByName = {
-  [key: string]: {
-    songs: Song[]
-    cover: Buffer | null
-    artist: {
-      name: string
-      path: string
-    }
-  }
+export type Song = {
+  name: string
+  path: string
+  artistName: string
+  cover: Buffer | null
 }
 
 async function readLibrary(): Promise<string[] | null> {
@@ -53,59 +35,36 @@ async function readLibrary(): Promise<string[] | null> {
   }
 }
 
-export async function getAllArtistsWithAlbumCount(): Promise<ArtistsWithAlbumCount[] | null> {
+export async function getArtistAll(): Promise<Artist[] | null> {
   try {
     const library = await readLibrary()
     if (library === null) {
       throw new Error('Error reading library')
     }
 
-    const allArtists: ArtistsWithAlbumCount[] = []
+    const allArtists: Artist[] = []
 
     for (const artist of library) {
-      const artistDirectoryPath = path.join(LIBRARY_PATH, artist)
+      const artistData = await getArtistByName(artist, { songs: false })
 
-      if (!(await isDirectory(artistDirectoryPath))) {
-        throw new Error('Path is not a directory')
+      if (artistData === null) {
+        throw new Error(`Couldn't find data from artist: ${artist}`)
       }
-
-      const artistData = { artist, albumsCount: 0, covers: null } as {
-        artist: string
-        albumsCount: number
-        covers: Buffer[] | null
-      }
-
-      const artistFiles = await readdir(artistDirectoryPath)
-
-      const albumCovers: Buffer[] = []
-
-      for (const album of artistFiles) {
-        const albumDirectoryPath = path.join(artistDirectoryPath, album)
-        if (!(await isDirectory(albumDirectoryPath))) {
-          throw new Error(`${albumDirectoryPath} is not a directory inside of ${artist} directory`)
-        }
-        artistData.albumsCount++
-        const cover = await getAlbumCover(albumDirectoryPath)
-        if (cover === null) {
-          continue
-        } else if (albumCovers.length < 4) {
-          albumCovers.push(cover)
-        }
-      }
-
-      artistData.covers = albumCovers.length ? albumCovers : null
 
       allArtists.push(artistData)
     }
 
     return allArtists
   } catch (error) {
-    console.error('Error loading all artists with album count: ', error)
+    console.error('Error loading artist from library.', error)
     return null
   }
 }
 
-export async function getArtistByName(artistName: string): Promise<ArtistByName | null> {
+export async function getArtistByName(
+  artistName: string,
+  opts: { songs: boolean } = { songs: true }
+): Promise<Artist | null> {
   try {
     const library = await readLibrary()
     if (library === null) {
@@ -126,27 +85,28 @@ export async function getArtistByName(artistName: string): Promise<ArtistByName 
 
     const artistFiles = await readdir(artistDirectoryPath)
 
-    const albums: ArtistByName = {}
+    const albums: Album[] = []
 
     for (const album of artistFiles) {
-      const albumDirectoryPath = path.join(artistDirectoryPath, album)
-      const albumData = await fetchAlbum(albumDirectoryPath, artistName)
+      const albumData = await getAlbumByName(album, artistName, opts)
       if (albumData) {
-        albums[album] = albumData
+        albums.push(albumData)
       }
     }
-
-    return albums
+    return { name: artistName, albums }
   } catch (error) {
     console.error(`Error loading artist by name "${artistName}": `, error)
     throw new Error()
   }
 }
 
-export async function fetchAlbum(
-  albumDirectoryPath: string,
-  artistName: string
+export async function getAlbumByName(
+  albumName: string,
+  artistName: string,
+  opts: { songs: boolean }
 ): Promise<Album | null> {
+  const albumDirectoryPath = path.join(LIBRARY_PATH, artistName, albumName)
+
   try {
     if (!(await isDirectory(albumDirectoryPath))) {
       throw new Error(`${albumDirectoryPath} is not a directory`)
@@ -155,41 +115,35 @@ export async function fetchAlbum(
     /* Album files */
     const albumFiles = await readdir(albumDirectoryPath)
 
-    /* Artist info */
-    const artistDirectoryPath = path.join(LIBRARY_PATH, artistName)
-    const artist = { name: artistName, path: artistDirectoryPath }
-
     /* Cover */
     const cover = await getAlbumCover(albumDirectoryPath, albumFiles)
 
-    /* Songs object */
-    const songs = getSongsFromAlbum(albumFiles, albumDirectoryPath, artist, cover)
+    /* Return early without songs if opts.song = false */
+    if (!opts.songs) {
+      return { name: albumName, cover, artistName }
+    }
 
-    return { songs, cover, artist }
+    /* Songs object */
+    const songs = getSongsFromAlbum(albumDirectoryPath, albumFiles, artistName, cover)
+
+    return { name: albumName, songs, cover, artistName }
   } catch (err) {
     console.error(err)
     return null
   }
 }
 
-type SongsFromAlbum = {
-  name: string
-  path: string
-  artist: Artist
-  cover: Cover
-}
-
 function getSongsFromAlbum(
-  files: string[],
   albumDirectoryPath: string,
-  artist: { name: string; path: string },
+  files: string[],
+  artistName: string,
   cover: Buffer | null
-): SongsFromAlbum[] {
+): Song[] {
   const songs = files
     .filter((file: string) => file.endsWith('.mp3'))
     .map((song) => {
       const songPath = path.join(albumDirectoryPath, song)
-      return { name: getFileNameWithoutExtension(song), path: songPath, artist, cover }
+      return { name: getFileNameWithoutExtension(song), path: songPath, artistName, cover }
     })
 
   return songs
@@ -258,9 +212,10 @@ async function isDirectory(path: string): Promise<boolean> {
 }
 
 function getFileNameWithoutExtension(filename: string): string {
-  if (filename.indexOf('/') !== -1) {
-    const basename = filename.split('/')[-1]
-    return basename.split('.').slice(0, -1).join('.')
+  if (filename.indexOf('/') !== -1 || filename.indexOf('\\') !== -1) {
+    const pathSeparator = filename.indexOf('/') !== -1 ? '/' : '\\'
+    const basename = filename.split(pathSeparator).pop()
+    return basename!.split('.').slice(0, -1).join('.')
   }
   return filename.split('.').slice(0, -1).join('.')
 }

@@ -1,13 +1,19 @@
 /// <reference types="vite/client" />
-import { ArtistsWithAlbumCount, ArtistByName } from '../../preload/lib/utils'
+import { Album, Artist } from '../../preload/lib/db'
 
 declare global {
   interface Window {
     api: {
-      getAllArtistsWithAlbumCount: () => Promise<ArtistsWithAlbumCount | null>
-      getArtistByName: (artistName: string) => Promise<ArtistByName | null>
+      getArtistAll: () => Promise<Artist[] | null>
+      getArtistByName: (artistName: string) => Promise<Artist | null>
+      getAlbumByName: (
+        artistName: string,
+        albumName: string,
+        opts = { songs: boolean }
+      ) => Promise<Album | null>
+      getSongDuration: (songPath: string) => Promise<number | null>
     }
   }
 }
 
-export { ArtistsWithAlbumCount, ArtistByName }
+export { Album, Artist }
