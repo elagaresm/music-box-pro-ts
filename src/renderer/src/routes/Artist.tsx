@@ -1,15 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { useLoaderData } from 'react-router-dom'
 import { getCoverBlob, matrixOnEvent } from '../lib/helper'
-import { SlOptions as OptionsIcon } from 'react-icons/sl'
-// import { useMusicQueue } from '../contexts/MusicQueueContext'
-import { Artist as ArtistType, Album as AlbumType } from '@renderer/env'
+import { Artist as ArtistType, Album as AlbumType, Song as SongType } from '@renderer/env'
 import Collage from './components/Collage'
 
 export async function loader({ params }): Promise<ArtistType | null> {
   try {
     const artist = await window.api.getArtistByName(decodeURIComponent(params.artistName))
-    if (artist !== undefined) console.log('artist found')
     return artist
   } catch (error) {
     console.error('Could not load artist: ', error)
@@ -35,9 +32,7 @@ const Artist = (): JSX.Element => {
 
   return (
     <div className="h-full flex flex-col items-center pt-3 px-16 text-white">
-      <div className="h-[25vh] aspect-square bg-[#151515] rounded-lg overflow-hidden">
-        <Collage images={covers} />
-      </div>
+      {/* Artist Name */}
       <div className="mb-12">
         <h2
           ref={artistNameRef}
@@ -47,81 +42,42 @@ const Artist = (): JSX.Element => {
           {artistName}
         </h2>
       </div>
-      <AlbumList albums={artist.albums} />
+
+      {/* Albums */}
+      {artist.albums.map((album) => (
+        <Album album={album} key={album.name} />
+      ))}
     </div>
   )
 }
 
 export default Artist
 
-function AlbumList({ albums }: { albums: AlbumType[] }): JSX.Element {
-  if (!albums) {
-    return (
-      <p className="text-outline roboto-mono-regular">There are no albums or the album is empty</p>
-    )
-  }
-
+function Album({ album }: { album: AlbumType }): JSX.Element {
   return (
-    <ul className="w-full">
-      {albums.map((album) => (
-        <Album key={album.name} album={album} />
-      ))}
-    </ul>
+    <div className="w-full">
+      <h3 className="text-lg mb-3">{album.name}</h3>
+      <ul className="h-[100px] gap-2 flex mb-12 bg-[#151515] w-max">
+        {album.songs && album.songs.map((song) => <Song song={song} key={song.name} />)}
+      </ul>
+    </div>
   )
 }
 
-function Album({ album }: { album: AlbumType }): JSX.Element {
-  console.log(album)
-  console.log('album name:', album.name)
+function Song({ song }: { song: SongType }): JSX.Element {
+  const largeText = song.name.length > 12
   return (
-    <li className="border-b-[1px] mb-3 w-full">
-      <h3 className="text-lg mb-2">{album.name}</h3>
-      <ul>
-        {album.songs &&
-          album.songs.map((song) => (
-            <li key={song.name} className="flex items-center justify-between">
-              <p>{song.name}</p>
-              <button>
-                <OptionsIcon className="text-white" />
-              </button>
-            </li>
-          ))}
-      </ul>
+    <li className="flex-1 max-w-28 min-w-28 hover:text-accent hover:scale-105 duration-300 cursor-pointer">
+      <img
+        src={getCoverBlob(song.cover as Buffer)}
+        alt="song cover"
+        className="w-full h-full object-cover mb-2"
+      />
+      <div className="overflow-hidden">
+        <p className={`whitespace-nowrap ${largeText && 'moving-text'} hover:text-accent`}>
+          {song.name}
+        </p>
+      </div>
     </li>
   )
 }
-
-// function ArtistSong({ song }) {
-//   const [durationLabel, setDurationLabel] = useState('0')
-//   const { addSongToQueue } = useMusicQueue()
-
-//   useEffect(() => {
-//     ;(async () => {
-//       const songDuration = await window.api.getSongDuration(song.path)
-//       if (songDuration) {
-//         setDurationLabel(secondsToMinutes(songDuration))
-//       }
-//     })()
-//   }, [])
-
-//   return (
-//     <li className="border-b-[1px] mb-3 w-full flex items-center justify-between">
-//       <div className="flex items-center gap-4">
-//         {/* TODO: Set hover bg */}
-//         <button
-//           onClick={() => addSongToQueue(song)}
-//           className="rounded-full hover:bg-outline w-8 h-8 flex items-center justify-center"
-//         >
-//           <PlayIcon className="text-white w-4 h-4" />
-//         </button>
-//         <div className="grid grid-rows-2 gap-1">
-//           <p className="text-lg">{song.name}</p>
-//           <p className="text-outline text-sm">{durationLabel}</p>
-//         </div>
-//       </div>
-//       <button>
-//         <OptionsIcon className="text-white" />
-//       </button>
-//     </li>
-//   )
-// }

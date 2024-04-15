@@ -8,7 +8,7 @@ import { loader as artistsLoader } from './routes/Artists'
 import { createHashRouter, RouterProvider } from 'react-router-dom'
 import Artists from './routes/Artists'
 import ErrorPage from './routes/ErrorPage'
-import Artist, { loader as artistLoader } from './routes/Artist'
+import ArtistType, { loader as artistLoader } from './routes/Artist'
 
 const router = createHashRouter([
   {
@@ -17,7 +17,7 @@ const router = createHashRouter([
     errorElement: <ErrorPage />,
     children: [
       { index: true, element: <Artists />, loader: artistsLoader },
-      { path: 'artist/:artistName', element: <Artist />, loader: artistLoader }
+      { path: 'artist/:artistName', element: <ArtistType />, loader: artistLoader }
     ]
   }
 ])

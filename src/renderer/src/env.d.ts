@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import { Album, Artist } from '../../preload/lib/db'
+import { Album, Artist, Song } from '../../preload/lib/db'
 
 declare global {
   interface Window {
@@ -16,4 +16,4 @@ declare global {
   }
 }
 
-export { Album, Artist }
+export { Album, Artist, Song }
